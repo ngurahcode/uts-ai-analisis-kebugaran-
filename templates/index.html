@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Analisis Kebugaran</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 25px 15px;
+        }
+        .card {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 540px;
+        }
+        h2 { margin-top: 0; color: #1e3c72; text-align: center; margin-bottom: 4px; }
+        p.subtitle { text-align: center; color: #666; font-size: 13px; margin-top: 0; margin-bottom: 22px; }
+        .form-group { margin-bottom: 14px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; color: #333; font-size: 14px; }
+        input, select {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1.5px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            background-color: #fff;
+            transition: border-color 0.3s;
+        }
+        input:focus, select:focus { outline: none; border-color: #2a5298; }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        button {
+            padding: 13px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn-submit {
+            flex: 2;
+            background: #2a5298;
+            color: white;
+        }
+        .btn-submit:hover { background: #1e3c72; }
+        .btn-reset {
+            flex: 1;
+            background: #e9ecef;
+            color: #495057;
+        }
+        .btn-reset:hover { background: #dde2e6; }
+        .result-box {
+            margin-top: 24px;
+            padding: 18px;
+            background: #f4f7fe;
+            border-left: 5px solid #2a5298;
+            border-radius: 8px;
+        }
+        .result-box h3 { margin: 0 0 12px 0; color: #1e3c72; font-size: 16px; }
+        .result-item { margin: 8px 0; font-size: 14px; color: #333; line-height: 1.4; }
+        .badge {
+            display: inline-block;
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .badge-red { background: #d9534f; }
+        .badge-blue { background: #2a5298; }
+        .badge-green { background: #2e8b57; }
+        .advice-box {
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: #ffffff;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #444;
+            border: 1px solid #e0e6f5;
+            line-height: 1.5;
+        }
+        .chart-container {
+            margin-top: 18px;
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e0e6f5;
+        }
+        .chart-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #555;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        /* Styling Tabel Riwayat */
+        .history-section {
+            margin-top: 26px;
+            border-top: 1.5px solid #eee;
+            padding-top: 18px;
+        }
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .history-header h4 { margin: 0; color: #1e3c72; font-size: 14px; }
+        .btn-clear-history {
+            background: none;
+            color: #d9534f;
+            padding: 4px 8px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .btn-clear-history:hover { background: #fdf0f0; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        th, td {
+            padding: 8px 6px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th { background: #f8f9fa; color: #555; font-weight: 600; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>AI Analisis Kebugaran</h2>
+    <p class="subtitle">Pipeline: Linear Regression &rarr; K-Nearest Neighbors</p>
+
+    <form method="POST" id="fitnessForm">
+        <div class="form-group">
+            <label>Tujuan Awal Latihan</label>
+            <select name="tujuan" id="tujuan" required>
+                <option value="1" {% if hasil and hasil.tujuan == 1 %}selected{% endif %}>Menurunkan Lemak (Cutting)</option>
+                <option value="2" {% if hasil and hasil.tujuan == 2 %}selected{% endif %}>Menambah Massa Otot (Bulking)</option>
+                <option value="3" {% if hasil and hasil.tujuan == 3 %}selected{% endif %}>Jaga Kebugaran / Pemulihan</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Berat Badan (kg)</label>
+            <input type="number" step="any" min="25" max="250" name="berat" id="berat"
+                   placeholder="Contoh: 65" value="{{ hasil.berat if hasil else '' }}" required>
+        </div>
+        <div class="form-group">
+            <label>Tinggi Badan (cm)</label>
+            <input type="number" step="any" min="100" max="230" name="tinggi" id="tinggi"
+                   placeholder="Contoh: 165" value="{{ hasil.tinggi if hasil else '' }}" required>
+        </div>
+        <div class="form-group">
+            <label>Durasi Lari Harian (menit)</label>
+            <input type="number" step="any" min="0" max="300" name="durasi" id="durasi"
+                   placeholder="Contoh: 30" value="{{ hasil.durasi if hasil else '' }}" required>
+        </div>
+        <div class="btn-group">
+            <button type="submit" class="btn-submit">Analisis Sekarang</button>
+            <button type="button" class="btn-reset" onclick="resetForm()">Reset Form</button>
+        </div>
+    </form>
+
+    {% if hasil %}
+    <div class="result-box" id="resultBox">
+        <h3>Hasil Prediksi AI:</h3>
+        <div class="result-item">Skor BMI: <b>{{ hasil.bmi }}</b> ({{ hasil.kategori_bmi }})</div>
+        <div class="result-item">Estimasi Kalori: <b>{{ hasil.kalori }} kkal/minggu</b></div>
+        <div class="result-item">Rekomendasi: <span class="badge {{ hasil.warna }}">{{ hasil.program }}</span></div>
+        <div class="advice-box">
+            <b>Saran Latihan & Nutrisi:</b><br>
+            {{ hasil.saran }}
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">Peta Posisi Anda vs Data Latih KNN (BMI vs Kalori)</div>
+            <canvas id="knnChart" height="200"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // 1. Render Grafik Peta KNN
+        const rawData = {{ data_grafik | safe }};
+        const userPoint = { x: {{ hasil.bmi }}, y: {{ hasil.kalori }} };
+
+        const dataLemak = rawData.filter(d => d.label === "Fokus Bakar Lemak");
+        const dataOtot = rawData.filter(d => d.label === "Pembentukan Otot");
+        const dataPulih = rawData.filter(d => d.label === "Pemulihan & Surplus Nutrisi");
+
+        new Chart(document.getElementById('knnChart'), {
+            type: 'scatter',
+            data: {
+                datasets: [
+                    {
+                        label: 'Posisi Anda',
+                        data: [userPoint],
+                        backgroundColor: '#ff9800',
+                        borderColor: '#000',
+                        borderWidth: 2,
+                        pointRadius: 9,
+                        pointStyle: 'star'
+                    },
+                    { label: 'Bakar Lemak', data: dataLemak, backgroundColor: '#d9534f', pointRadius: 5 },
+                    { label: 'Massa Otot', data: dataOtot, backgroundColor: '#2a5298', pointRadius: 5 },
+                    { label: 'Pemulihan', data: dataPulih, backgroundColor: '#2e8b57', pointRadius: 5 }
+                ]
+            },
+            options: {
+                scales: {
+                    x: { title: { display: true, text: 'Skor BMI' } },
+                    y: { title: { display: true, text: 'Kalori / Minggu (kkal)' } }
+                }
+            }
+        });
+
+        // 2. Simpan Hasil Baru ke localStorage
+        const namaTujuan = { 1: "Cutting", 2: "Bulking", 3: "Pemulihan" };
+        const entryBaru = {
+            tujuan: namaTujuan[{{ hasil.tujuan }}],
+            profil: "{{ hasil.berat }}kg / {{ hasil.tinggi }}cm / {{ hasil.durasi }}m",
+            bmi: "{{ hasil.bmi }}",
+            kalori: "{{ hasil.kalori }} kkal",
+            program: "{{ hasil.program }}",
+            warna: "{{ hasil.warna }}"
+        };
+
+        let riwayat = JSON.parse(localStorage.getItem("riwayatKebugaran")) || [];
+        // Cegah duplikasi saat browser di-refresh
+        if (riwayat.length === 0 || JSON.stringify(riwayat[0]) !== JSON.stringify(entryBaru)) {
+            riwayat.unshift(entryBaru);
+            if (riwayat.length > 5) riwayat.pop(); // Simpan maksimal 5 riwayat terakhir
+            localStorage.setItem("riwayatKebugaran", JSON.stringify(riwayat));
+        }
+    </script>
+    {% endif %}
+
+    <!-- Tabel Riwayat Pengecekan -->
+    <div class="history-section" id="historySection" style="display: none;">
+        <div class="history-header">
+            <h4>Riwayat Pengecekan Terakhir</h4>
+            <button type="button" class="btn-clear-history" onclick="hapusRiwayat()">Hapus Riwayat</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Tujuan</th>
+                    <th>Profil</th>
+                    <th>BMI</th>
+                    <th>Kalori</th>
+                    <th>Hasil AI</th>
+                </tr>
+            </thead>
+            <tbody id="historyBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Fungsi Tombol Reset Form
+    function resetForm() {
+        document.getElementById("tujuan").value = "1";
+        document.getElementById("berat").value = "";
+        document.getElementById("tinggi").value = "";
+        document.getElementById("durasi").value = "";
+        const resultBox = document.getElementById("resultBox");
+        if (resultBox) resultBox.style.display = "none";
+    }
+
+    // Fungsi Render Tabel Riwayat dari localStorage
+    function tampilkanRiwayat() {
+        const riwayat = JSON.parse(localStorage.getItem("riwayatKebugaran")) || [];
+        const section = document.getElementById("historySection");
+        const tbody = document.getElementById("historyBody");
+
+        if (riwayat.length === 0) {
+            section.style.display = "none";
+            return;
+        }
+
+        section.style.display = "block";
+        tbody.innerHTML = riwayat.map(item => `
+            <tr>
+                <td><b>${item.tujuan}</b></td>
+                <td>${item.profil}</td>
+                <td>${item.bmi}</td>
+                <td>${item.kalori}</td>
+                <td><span class="badge ${item.warna}">${item.program}</span></td>
+            </tr>
+        `).join("");
+    }
+
+    // Fungsi Hapus Semua Riwayat
+    function hapusRiwayat() {
+        localStorage.removeItem("riwayatKebugaran");
+        tampilkanRiwayat();
+    }
+
+    // Jalankan saat halaman pertama kali dimuat
+    tampilkanRiwayat();
+</script>
+
+</body>
+</html>
